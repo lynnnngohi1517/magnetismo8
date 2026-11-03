@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratorio virtual: Diamagnetismo</title>
+<style>
+:root{color-scheme:dark;--txt:#edf7ff;--muted:#aec7df;--cyan:#72d9ff;--blue:#3989e8;--pale:#b8e8ff;--line:#294d70}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#163e68,#071426 68%);color:var(--txt);font:15px system-ui,Segoe UI,Arial,sans-serif}
+header{text-align:center;padding:22px 15px 10px}h1{font-size:clamp(1.5rem,4vw,2.25rem);margin:0}header p{color:var(--muted);margin:7px auto;max-width:760px}
+main{max-width:1120px;margin:auto;padding:14px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(270px,.8fr);gap:14px}
+.panel{background:linear-gradient(145deg,#102640,#0b1b30);border:1px solid var(--line);border-radius:17px;padding:15px;box-shadow:0 12px 30px #0005}
+h2{font-size:1.08rem;margin:0 0 10px}canvas{width:100%;height:auto;display:block;background:#061426;border:1px solid #294d70;border-radius:12px;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}
+.note{color:var(--muted);font-size:.88rem;line-height:1.55;margin:9px 1px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+button{border:1px solid #4779a8;border-radius:10px;background:#173d66;color:var(--txt);padding:10px 13px;font-weight:700;cursor:pointer}button:hover{filter:brightness(1.2)}button.active{background:#126b9b;border-color:#75dfff}
+.status{background:#081a2e;border:1px solid #1f4264;border-radius:10px;padding:11px;margin-top:11px;color:#c6e5ff;line-height:1.45}
+.legend{display:flex;flex-wrap:wrap;gap:12px;color:var(--muted);font-size:.82rem;margin-top:9px}.sw{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px}
+.readouts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.metric{background:#153452;padding:10px;border-radius:10px}.metric small{display:block;color:var(--muted)}.metric strong{font-size:1.2rem}
+ol{padding-left:20px;color:var(--muted);line-height:1.6}li{margin:5px 0}.tip{border-left:3px solid var(--cyan);padding:8px 10px;background:#0a2038;color:#c1def6;border-radius:0 9px 9px 0;margin-top:12px}
+@media(max-width:800px){main{grid-template-columns:1fr}.panel{padding:12px}}
+</style></head>
+<body>
+<header><h1>Laboratorio virtual: Diamagnetismo</h1><p>Acerca un imán y observa cómo el material genera una respuesta magnética opuesta al campo aplicado y es débilmente repelido.</p></header>
+<main>
+<section class="panel">
+<h2>1. Acerca el imán al material</h2>
+<canvas id="scene" width="900" height="570" aria-label="Simulación de diamagnetismo; arrastra el imán hacia la muestra y observa la respuesta opuesta"></canvas>
+<div class="legend">
+<span><i class="sw" style="background:#3989e8"></i>Material sin influencia externa</span>
+<span><i class="sw" style="background:#72d9ff"></i>Respuesta inducida opuesta</span>
+<span><i class="sw" style="background:#b8e8ff"></i>Campo externo</span>
+</div>
+<div class="row">
+<button id="near" class="active">Acercar imán</button><button id="far">Alejar imán</button><button id="flip">Invertir polos</button><button id="reset">Reiniciar</button>
+</div>
+<div class="status" id="status">Arrastra el imán hacia la muestra. Al acercarlo, las flechas de respuesta inducida apuntarán en sentido opuesto al campo magnético local.</div>
+<div class="readouts">
+<div class="metric"><small>Respuesta diamagnética</small><strong id="response">Casi nula</strong></div>
+<div class="metric"><small>Repulsión relativa</small><strong id="repulsion">0 %</strong></div>
+</div>
+<p class="note">La respuesta diamagnética es débil. Al alejar el imán, la respuesta inducida desaparece; el material no conserva una magnetización remanente apreciable.</p>
+</section>
+<aside class="panel">
+<h2>2. ¿Qué estás observando?</h2>
+<p class="note">En los materiales diamagnéticos, los momentos magnéticos permanentes suelen cancelarse porque los electrones están emparejados.</p>
+<p class="note">Cuando se acerca un imán, el campo externo modifica ligeramente el movimiento de los electrones y produce una respuesta magnética inducida que se opone al campo aplicado.</p>
+<p class="note">Por eso el material es <b>débilmente repelido</b> por el imán. La respuesta desaparece prácticamente cuando se retira el campo.</p>
+<h2 style="margin-top:18px">3. Pasos del experimento</h2>
+<ol><li>Observa las flechas del material sin acercar el imán.</li><li>Acerca el imán arrastrándolo o usando el botón.</li><li>Observa que la respuesta inducida se opone al campo local.</li><li>Aleja el imán y comprueba que la respuesta desaparece.</li><li>Invierte los polos y compara el sentido de la respuesta.</li></ol>
+<div class="tip"><b>Concepto clave:</b> el diamagnetismo genera una respuesta magnética inducida débil y opuesta al campo externo, por lo que produce repulsión.</div>
+</aside>
+</main>
+<script>
+const canvas=document.getElementById('scene'),ctx=canvas.getContext('2d'),W=900,H=570;
+const sample={x:185,y:170,w:535,h:320};
+let magnet={x:75,y:285,angle:0},drag=false,offset={x:0,y:0},flipped=false;
+const dipoles=[];function rand(a,b){return a+Math.random()*(b-a)}
+for(let r=0;r<7;r++)for(let c=0;c<12;c++)dipoles.push({x:sample.x+27+c*43,y:sample.y+25+r*44,base:rand(-Math.PI,Math.PI),size:11});
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}function norm(a){return Math.atan2(Math.sin(a),Math.cos(a))}
+function fieldAt(x,y){let dx=x-magnet.x,dy=y-magnet.y,dist=Math.hypot(dx,dy)||1,ux=dx/dist,uy=dy/dist,mx=Math.cos(magnet.angle),my=Math.sin(magnet.angle),dot=mx*ux+my*uy,bx=3*dot*ux-mx,by=3*dot*uy-my,strength=clamp(25000/(dx*dx+dy*dy+12000),0,1);return{angle:Math.atan2(by,bx),strength}}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x+w,y+h,r);ctx.arcTo(x,y+h,x,y+h,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function draw(){
+ ctx.clearRect(0,0,W,H);ctx.fillStyle='#a9c9e5';ctx.font='15px system-ui';ctx.fillText('Arrastra el imán azul con el dedo o el mouse',22,28);
+ rr(sample.x,sample.y,sample.w,sample.h,18);ctx.fillStyle='#102c49';ctx.fill();ctx.strokeStyle='#4d83b4';ctx.lineWidth=3;ctx.stroke();
+ let sum=0;
+ dipoles.forEach(d=>{
+  const f=fieldAt(d.x,d.y);
+  // Respuesta inducida diamagnética: momento opuesto al campo local, débil y reversible.
+  const induced=clamp(f.strength*.52,0,.42);
+  const angle=norm(f.angle+Math.PI);
+  sum+=induced;
+  const color=induced>.10?'#72d9ff':'#3989e8';
+  // Mostrar el vector de campo y el vector inducido opuesto cerca del material.
+  ctx.save();ctx.translate(d.x,d.y);
+  if(induced>.025){
+   ctx.globalAlpha=.15+induced*.45;ctx.strokeStyle='#b8e8ff';ctx.lineWidth=2;ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(-17,0);ctx.lineTo(17,0);ctx.stroke();ctx.setLineDash([]);
+  }
+  ctx.rotate(angle);
+  ctx.globalAlpha=induced>.025?Math.min(.95,.3+induced*1.4):.25;
+  ctx.strokeStyle=color;ctx.lineWidth=2.8;ctx.beginPath();ctx.moveTo(-d.size,0);ctx.lineTo(d.size,0);ctx.stroke();
+  ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(d.size+4,0);ctx.lineTo(d.size-3,-5);ctx.lineTo(d.size-3,5);ctx.closePath();ctx.fill();
+  ctx.restore();
+ });
+ ctx.fillStyle='#e0f2ff';ctx.font='bold 17px system-ui';ctx.fillText('MATERIAL DIAMAGNÉTICO',sample.x+150,sample.y+sample.h+30);
+ // Flechas pequeñas hacia afuera sugieren repulsión cuando el imán está próximo.
+ const proximity=clamp(1-Math.hypot(magnet.x-(sample.x+sample.w/2),magnet.y-(sample.y+sample.h/2))/520,0,1);
+ if(proximity>.15){ctx.save();ctx.strokeStyle='rgba(114,217,255,.65)';ctx.lineWidth=3;for(let i=0;i<3;i++){let yy=sample.y+80+i*80;ctx.beginPath();ctx.moveTo(sample.x-5,yy);ctx.lineTo(sample.x-30-proximity*18,yy);ctx.moveTo(sample.x-30-proximity*18,yy);ctx.lineTo(sample.x-20-proximity*18,yy-7);ctx.moveTo(sample.x-30-proximity*18,yy);ctx.lineTo(sample.x-20-proximity*18,yy+7);ctx.stroke()}ctx.restore()}
+ ctx.save();ctx.translate(magnet.x,magnet.y);ctx.rotate(magnet.angle);ctx.shadowColor='#000';ctx.shadowBlur=14;rr(-76,-26,152,52,9);ctx.fillStyle='#2368ad';ctx.fill();ctx.save();ctx.beginPath();ctx.rect(0,-26,76,52);ctx.clip();ctx.fillStyle='#79caff';ctx.fillRect(0,-26,76,52);ctx.restore();ctx.shadowBlur=0;ctx.strokeStyle='#d8efff';ctx.lineWidth=2;rr(-76,-26,152,52,9);ctx.stroke();ctx.fillStyle='#06182a';ctx.font='bold 23px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(flipped?'S':'N',-38,0);ctx.fillText(flipped?'N':'S',38,0);ctx.restore();
+ const avg=sum/dipoles.length;
+ document.getElementById('response').textContent=avg>.12?'Débil, visible':avg>.035?'Muy débil':'Casi nula';
+ document.getElementById('repulsion').textContent=Math.round(avg*100)+' %';
+ const st=document.getElementById('status');
+ if(avg>.12)st.textContent='El imán está cerca: el material desarrolla una respuesta inducida opuesta al campo magnético local. La repulsión sigue siendo débil.';
+ else if(avg>.035)st.textContent='El campo produce una respuesta diamagnética pequeña. Las flechas celestes muestran la orientación opuesta.';
+ else st.textContent='La influencia del imán es casi nula. Acércalo para observar la respuesta diamagnética inducida.';
+}
+function pos(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+function hit(p){let dx=p.x-magnet.x,dy=p.y-magnet.y,a=-magnet.angle,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a);return Math.abs(lx)<88&&Math.abs(ly)<40}
+canvas.addEventListener('pointerdown',e=>{let p=pos(e);if(hit(p)){drag=true;offset={x:p.x-magnet.x,y:p.y-magnet.y};canvas.setPointerCapture(e.pointerId)}});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;let p=pos(e);magnet.x=clamp(p.x-offset.x,80,820);magnet.y=clamp(p.y-offset.y,65,510);draw()});
+canvas.addEventListener('pointerup',()=>drag=false);canvas.addEventListener('pointercancel',()=>drag=false);
+document.getElementById('near').onclick=()=>{magnet.x=sample.x-65;magnet.y=sample.y+sample.h/2;draw()};
+document.getElementById('far').onclick=()=>{magnet.x=65;magnet.y=65;draw()};
+document.getElementById('flip').onclick=()=>{flipped=!flipped;magnet.angle+=Math.PI;draw()};
+document.getElementById('reset').onclick=()=>{magnet={x:75,y:285,angle:0};flipped=false;draw()};
+draw();
+</script></body></html>
